@@ -29,6 +29,9 @@ const userSchema = new Schema(
         role: {
             type: String,
             default: "guest"
+        },
+        refreshToken: {
+            type: String
         }
     },
     {timestamps: true}
@@ -48,6 +51,7 @@ userSchema.methods.isPasswordCorrect = async function(password){
 
 // custom method
 
+// Generate Access Token
 userSchema.methods.generateAccessToken = function(){
     return jwt.sign(
         {
@@ -63,7 +67,7 @@ userSchema.methods.generateAccessToken = function(){
     )
 }
 
-
+// Generate Refresh Token
 userSchema.methods.generateRefreshToken = function(){
     jwt.sign(
         {
