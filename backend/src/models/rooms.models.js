@@ -9,33 +9,32 @@ const roomSchema = new Schema(
         },
         roomType: {
             type: String,
-            unique: true,
-            required: true
+            required: true,
+            enum: ["Single", "Double", "Deluxe", "Suite"] // Only this values are value
         },
         price: {
             type: Number,
-            required: true
+            required: true,
+            min: 0
         },
         capacity: {
             type: Number,
-            required: true
+            required: true,
+            min: 1
         },
         description: {
             type: String,
-            default: "This is clean and ready to use top class room for your family"
+            default: "This is clean and ready to use top class room for your family",
+            trim: true
         },
-        amenities: {
-            type: String
-        },
-        images: {
-            type: String,
-        },
+        amenities: [String], //this should be in array
+        images: [String], //this should be in array
         isAvailable: {
             type: Boolean,
-            required: true
+            default: true 
         },
     },
     {timestamps: true}
 )
 
-export const Room = new model("Room", roomSchema)
+export const Room = model("Room", roomSchema)
