@@ -12,31 +12,36 @@ const bookingSchema = new Schema(
         },
         guests: {
             type: Number,
-            required: true
+            required: true,
+            min: 1
         },
         totalPrice: {
             type: Number,
-            required: true
+            required: true,
+            min: 0
         },
         bookingStatus: {
             type: String,
             required: true,
-            trim: true
+            enum: ["Pending", "Confirmed", "Failed"]
         },
         paymentStatus: {
             type: String,
-            required: true
+            required: true,
+            enum: ["Pending", "Paid", "Failed"]
         },
         user: {
             type: Schema.Types.ObjectId,
-            ref: "User"
+            ref: "User",
+            required: true
         },
         room: {
             type: Schema.Types.ObjectId,
-            ref: "Room"
+            ref: "Room",
+            required: true
         }
     },
     {timestamps: true}
 )
 
-export const Booking = new model("Booking", bookingSchema)
+export const Booking = model("Booking", bookingSchema)
