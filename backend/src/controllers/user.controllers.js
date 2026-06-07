@@ -51,16 +51,21 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if(!emailRegex.text(email)){
+    const isValid = emailRegex.test(email)
+    if(!isValid){
         throw new ApiError(400, "Invalid email")
     }
 
-    const exitedUser = await User.find(email)
+    const exitedUser = await User.findOne({  // if you use find that is return array and the condition become true thats we are using findOne method
+        $or: [{email}, {phoneNumber}]
+    })
+
     if(exitedUser){
         throw new ApiError(400, "User is already exit")
     }
 
-    const avatarLocalPath = req.file?.avatar?.[0]?.path
+    const avatarLocalPath = req.file?.path
+    console.log("Avatar local path => ",avatarLocalPath)
     
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar file not found")
@@ -80,11 +85,11 @@ const registerUser = asyncHandler(async (req, res) => {
         }
     })
 
-    const createUser = await User.findById(user._id).select(
+    const createdUser = await User.findById(user._id).select(
         "-password -refreshToken"
     )
 
-    if(!createUser){
+    if(!createdUser){
         throw new ApiError(500, "Something went wrong while registering the user")
     }
 
@@ -93,15 +98,74 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(
         new ApiResponse(
             201,
-            createUser,
+            createdUser,
             "User registered successfully"
         )
     )
 })
 
 
+const loginUser = asyncHandler (async (req, res)=> {
 
+    // email or phoneNumber and password req.params
+    // check field
+    // find user 
+    // check this user
+    // password check
+    // validate password
+    // generate refresh and access token
+    // unselect the password and refresh token
+    // add options for cookies
+    // In response send cookies(refresh token and access token) 
+
+    const {email, password, phoneNumber} = req.body
+    if((!email && !password) || !password){
+        throw new ApiError(400 , "Email or phone number and password are required")
+    }
+
+    const user = await User.find({
+        $or: [{email}, {phoneNumber}]
+    })
+
+    if(!user){
+        throw new ApiError(404, "User not found")
+    }
+    
+    const isPasswordCorrect = await User.isPasswordCorrect(user._id)
+    if(!isPasswordCorrect){
+        throw new ApiError(401, "Invalid user credentials")
+    }
+
+    const { refreshToken, accessToken } = await generateAccessAndRefreshToken(user._id)
+
+    
+    const loggedInUser = await User.findById(user._id).select(
+        "-password -refreshToken"
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user: loggedInUser,
+                refreshToken,
+                accessToken
+            },
+            "User successfully logged in."
+        )
+    )
+})
 
 export {
-    registerUser
+    registerUser,
+    loginUser
 }

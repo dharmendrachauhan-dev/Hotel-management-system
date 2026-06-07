@@ -11,7 +11,12 @@ const userSchema = new Schema(
             index: true
         },
         avatar: {
-            type: String,
+            url: {
+                type: String
+            },
+            public_id: {
+                type: String
+            }
         },
         email: {
             unique: true,
@@ -41,10 +46,9 @@ const userSchema = new Schema(
 )
 
 //mongoose runs before saving user if 
-userSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next()
+userSchema.pre("save", async function () {
+    if (!this.isModified("password")) return 
     this.password = await bcrypt.hash(this.password, 10)
-    next()
 })
 
 // custom method for password check

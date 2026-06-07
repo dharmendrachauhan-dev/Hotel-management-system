@@ -2,7 +2,7 @@ import { v2 as cloudinary } from 'cloudinary'
 import dotenv from 'dotenv'
 import fs from 'fs'
 
-dotenv({
+dotenv.config({  // it loads the env
     path: "./.env"
 })
 
@@ -16,7 +16,7 @@ cloudinary.config({
 export const uploadOnCloudinary = async (LocalFilePath) => {
     try {
         if(!LocalFilePath) return console.log("Localfile path not found.")
-        const response = await cloudinary.v2.uploader.upload(LocalFilePath, 
+        const response = await cloudinary.uploader.upload(LocalFilePath, 
             {
                 resource_type: "image"
             }
