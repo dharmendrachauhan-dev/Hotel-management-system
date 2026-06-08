@@ -191,8 +191,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 
    return res
    .status(200)
-   .clearCookies("accessToken", options)
-   .clearCookies("refreshToken", options)
+   .clearCookie("accessToken", options)
+   .clearCookie("refreshToken", options)
    .json(
     new ApiResponse(
         200,
@@ -206,5 +206,6 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 export {
     registerUser,
-    loginUser
+    loginUser,
+    logoutUser
 }

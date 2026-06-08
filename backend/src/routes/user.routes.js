@@ -1,10 +1,12 @@
 import {Router} from "express"
-import { loginUser, registerUser } from "../controllers/user.controllers.js"
+import { loginUser, logoutUser, registerUser } from "../controllers/user.controllers.js"
 import { upload } from "../middlewares/multer.middlewares.js"
+import { verifyJWT } from "../middlewares/auth.middleware.js"
 
 const router = Router()
 
 router.route("/register").post(upload.single("avatar"), registerUser)
 router.route("/login").post(loginUser)
+router.route("/logout").patch(verifyJWT, logoutUser)
 
 export default router
