@@ -8,6 +8,7 @@ const router = Router()
 router.route("/register").post(upload.single("avatar"), registerUser)
 router.route("/login").post(loginUser)
 router.route("/logout").patch(verifyJWT, logoutUser)
-router.route("refresh-token").post(generateAccessToken)
+router.route("/refresh-token").post(generateAccessToken)
+router.route("/change-pass").patch(verifyJWT, changeCurrentPassword)
 
 export default router

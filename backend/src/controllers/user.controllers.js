@@ -212,7 +212,7 @@ const generateAccessToken = asyncHandler(async (req, res) => {
     // generate refresh token and access token pass the user.id
     // secure it from options
     // send response
-    const alreadyExitedRefreshTokenInStorage = req.cookies.refreshToken || req.body.refreshToken
+    const alreadyExitedRefreshTokenInStorage = req.cookies?.refreshToken || req.body.refreshToken
     if (!alreadyExitedRefreshTokenInStorage) {
         throw new ApiError(400, "Invalid refresh token")
     }
@@ -259,9 +259,51 @@ const generateAccessToken = asyncHandler(async (req, res) => {
     }
 })
 
+const changeCurrentPassword = asyncHandler (async (req, res) => {
+    // Todo
+    // extract oldpassword and newpassword from req.body
+    // check
+    // go in db check is user in db or not 
+    // check
+    // take old password check with ispassword method 
+    // check
+    // add into user reference point
+    // then save it
+
+    const { oldPassword, newPassword} = req.body
+    if(!oldPassword && !newPassword) {
+        throw new ApiError(400, "Both fields are required")
+    }
+
+    const user = await User.findById(req.user?._id)
+    if(!user){
+        throw new ApiError(400, "user not found")
+    }
+
+    const passwordCorrect = await user.isPasswordCorrect(oldPassword)
+    if(!passwordCorrect){
+        throw new ApiError(400, "Password is incorrect")
+    }
+
+    user.oldPassword = newPassword
+    await user.save({validateBeforeSave: false})
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            {},
+            "Password changed successfully"
+        )
+    )
+})
+
+
 export {
     registerUser,
     loginUser,
     logoutUser,
-    generateAccessToken
+    generateAccessToken,
+    changeCurrentPassword
 }
