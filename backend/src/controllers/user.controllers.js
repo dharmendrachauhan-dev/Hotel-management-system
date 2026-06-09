@@ -314,7 +314,52 @@ const getCurrentUser = asyncHandler(async (req, res)=> {
     )
 })
 
+const updateAccountDetails = asyncHandler(async (req, res)=> {
+    // Todo
+    // Take user emailid , phone, fullName from req.body
+    // validate empty or not
+    // make variable store the user data by findbyidandupdate()
+    // return the response
 
+    const { email, fullName, phoneNumber} = req.body
+    
+    if(!email?.trim()){
+        throw new ApiError(400, "Email is required")
+    }
+    if(!fullName?.trim()){
+        throw new ApiError(400, "Fullname is required")
+    }
+    if(!phoneNumber.trim()){
+        throw new ApiError(400, "Phone Number is required")
+    }
+
+    if(!phoneNumber.length === 10){
+        throw new ApiError(400, "Digits should be equal to 10")
+    }
+
+    const userID = req.user?._id
+    const updateUser = await User.findByIdAndUpdate(
+        userID,
+        {
+            $set:{
+                fullName: fullName,
+                email: email,
+                phoneNumber: phoneNumber
+            }
+        },
+        {new : true}
+    ).select("-password -refreshToken")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            updateUser,
+            "Account details updated successfully"
+        )
+    )
+})
 
 
 export {
