@@ -299,6 +299,23 @@ const changeCurrentPassword = asyncHandler (async (req, res) => {
     )
 })
 
+const getCurrentUser = asyncHandler(async (req, res)=> {
+    // todo
+    // Its obvious take user from middllaware verifyJWT
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            req.user,
+            "User fetched succefully"
+        )
+    )
+})
+
+
+
 
 export {
     registerUser,
