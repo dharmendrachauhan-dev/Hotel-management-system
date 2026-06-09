@@ -50,6 +50,10 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All fields required")
     }
 
+    if(phoneNumber.length !== 10){
+        throw new ApiError(400, "Digits should be equal to 10")
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     const isValid = emailRegex.test(email)
     if (!isValid) {
@@ -329,11 +333,11 @@ const updateAccountDetails = asyncHandler(async (req, res)=> {
     if(!fullName?.trim()){
         throw new ApiError(400, "Fullname is required")
     }
-    if(!phoneNumber.trim()){
+    if(!phoneNumber?.trim()){
         throw new ApiError(400, "Phone Number is required")
     }
 
-    if(!phoneNumber.length === 10){
+    if(phoneNumber.length !== 10){
         throw new ApiError(400, "Digits should be equal to 10")
     }
 
@@ -360,6 +364,7 @@ const updateAccountDetails = asyncHandler(async (req, res)=> {
         )
     )
 })
+
 
 
 export {
