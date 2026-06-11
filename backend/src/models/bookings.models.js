@@ -2,7 +2,7 @@ import mongoose, { model, Schema } from "mongoose";
 
 const guestSchema = new Schema(
     {
-        type: {   
+        type: {
             type: String,
             required: true,
             enum: ["adult", "children"],
@@ -37,7 +37,6 @@ const bookingSchema = new Schema(
             type: Date,
             required: true
         },
-        guests: [ guestSchema ],  // subschema
         totalPrice: {
             type: Number,
             required: true,
@@ -46,12 +45,12 @@ const bookingSchema = new Schema(
         bookingStatus: {
             type: String,
             required: true,
-            enum: ["Pending", "Confirmed", "Failed"]
+            enum: ["Pending", "Confirmed", "Failed", "Completed"]
         },
         paymentStatus: {
             type: String,
             required: true,
-            enum: ["Pending", "Paid", "Failed"]
+            enum: ["Pending", "Paid", "Failed", "Completed"]
         },
         user: {
             type: Schema.Types.ObjectId,
@@ -62,7 +61,8 @@ const bookingSchema = new Schema(
             type: Schema.Types.ObjectId,
             ref: "Room",
             required: true
-        }
+        },
+        guests: [ guestSchema ],  // subschema
     },
     {timestamps: true}
 )
