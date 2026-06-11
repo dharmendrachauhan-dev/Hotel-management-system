@@ -4,7 +4,7 @@ import { ApiResponse } from "../utils/ApiRespose.js"
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
 import { User } from "../models/users.models.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js"
 
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -382,9 +382,8 @@ const updateAvatar = asyncHandler(async (req, res) => {
     // check
     // response
 
-
-    const userId = req.user?._id
-    if (!userId) {
+    const loggedInUser = req.user
+    if (!loggedInUser) {
         throw new ApiError(400, "UserId not found")
     }
 
@@ -398,14 +397,17 @@ const updateAvatar = asyncHandler(async (req, res) => {
         req.user._id,
         {
             $set: {
-                newAvatar: {
+                avatar: {
                     url: newAvatar.url,
                     public_id: newAvatar.public_id
                 }
             }
         },
         { new: true }
-    ).select("-passsword -refreshToken")
+    ).select("-password -refreshToken")
+
+
+    const deleteExistedAvatar = await deleteFromCloudinary(loggedInUser.avatar.public_id)
 
     return res
         .status(202)
