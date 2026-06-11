@@ -50,7 +50,7 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All fields required")
     }
 
-    if(phoneNumber.length !== 10){
+    if (phoneNumber.length !== 10) {
         throw new ApiError(400, "Digits should be equal to 10")
     }
 
@@ -263,7 +263,7 @@ const generateAccessToken = asyncHandler(async (req, res) => {
     }
 })
 
-const changeCurrentPassword = asyncHandler (async (req, res) => {
+const changeCurrentPassword = asyncHandler(async (req, res) => {
     // Todo
     // extract oldpassword and newpassword from req.body
     // check
@@ -274,70 +274,74 @@ const changeCurrentPassword = asyncHandler (async (req, res) => {
     // add into user reference point
     // then save it
 
-    const { oldPassword, newPassword} = req.body
-    if(!oldPassword && !newPassword) {
+    const { oldPassword, newPassword } = req.body
+    if (!oldPassword && !newPassword) {
         throw new ApiError(400, "Both fields are required")
     }
 
     const user = await User.findById(req.user?._id)
-    if(!user){
+    if (!user) {
         throw new ApiError(400, "user not found")
     }
 
     const passwordCorrect = await user.isPasswordCorrect(oldPassword)
-    if(!passwordCorrect){
+    if (!passwordCorrect) {
         throw new ApiError(400, "Password is incorrect")
     }
 
-    user.oldPassword = newPassword
-    await user.save({validateBeforeSave: false})
+    user.password = newPassword
+    await user.save({ validateBeforeSave: false })
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            {},
-            "Password changed successfully"
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {},
+                "Password changed successfully"
+            )
         )
-    )
 })
 
-const getCurrentUser = asyncHandler(async (req, res)=> {
+const getCurrentUser = asyncHandler(async (req, res) => {
     // todo
     // Its obvious take user from middllaware verifyJWT
 
+    const user = req.user
+    if(!user){
+        throw new ApiError("User do not exit.")
+    }
     return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            req.user,
-            "User fetched succefully"
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                req.user,
+                "User fetched succefully"
+            )
         )
-    )
 })
 
-const updateAccountDetails = asyncHandler(async (req, res)=> {
+const updateAccountDetails = asyncHandler(async (req, res) => {
     // Todo
     // Take user emailid , phone, fullName from req.body
     // validate empty or not
     // make variable store the user data by findbyidandupdate()
     // return the response
 
-    const { email, fullName, phoneNumber} = req.body
-    
-    if(!email?.trim()){
+    const { email, fullName, phoneNumber } = req.body
+
+    if (!email?.trim()) {
         throw new ApiError(400, "Email is required")
     }
-    if(!fullName?.trim()){
+    if (!fullName?.trim()) {
         throw new ApiError(400, "Fullname is required")
     }
-    if(!phoneNumber?.trim()){
+    if (!phoneNumber?.trim()) {
         throw new ApiError(400, "Phone Number is required")
     }
 
-    if(phoneNumber.length !== 10){
+    if (phoneNumber.length !== 10) {
         throw new ApiError(400, "Digits should be equal to 10")
     }
 
@@ -345,24 +349,24 @@ const updateAccountDetails = asyncHandler(async (req, res)=> {
     const updateUser = await User.findByIdAndUpdate(
         userID,
         {
-            $set:{
+            $set: {
                 fullName: fullName,
                 email: email,
                 phoneNumber: phoneNumber
             }
         },
-        {new : true}
+        { new: true }
     ).select("-password -refreshToken")
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            updateUser,
-            "Account details updated successfully"
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                updateUser,
+                "Account details updated successfully"
+            )
         )
-    )
 })
 
 
@@ -377,40 +381,43 @@ const updateAvatar = asyncHandler(async (req, res) => {
     // update in db
     // check
     // response
-    
+
 
     const userId = req.user?._id
-    if(!userId){
+    if (!userId) {
         throw new ApiError(400, "UserId not found")
     }
 
-    const avatarLocalPath = req.field?.path
-    if(!avatarLocalPath){
-        throw new ApiError(400, "Avatar is required ")
+    const avatarLocalPath = req.file?.path
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar is required")
     }
 
     const newAvatar = await uploadOnCloudinary(avatarLocalPath)
     const updateAvatar = await User.findByIdAndUpdate(
         req.user._id,
         {
-            newAvatar:{
-                url: newAvatar.url,
-                public_id: newAvatar.public_id
+            $set: {
+                newAvatar: {
+                    url: newAvatar.url,
+                    public_id: newAvatar.public_id
+                }
             }
         },
-        {new: true}
+        { new: true }
     ).select("-passsword -refreshToken")
 
     return res
-    .status(202)
-    .json(
-        new ApiResponse(
-            200,
-            updateAvatar,
-            "Avatar updated successfully"
+        .status(202)
+        .json(
+            new ApiResponse(
+                200,
+                updateAvatar,
+                "Avatar updated successfully"
+            )
         )
-    )
 })
+
 
 
 export {
@@ -418,5 +425,8 @@ export {
     loginUser,
     logoutUser,
     generateAccessToken,
-    changeCurrentPassword
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateAvatar
 }
