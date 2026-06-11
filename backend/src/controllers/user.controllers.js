@@ -366,6 +366,52 @@ const updateAccountDetails = asyncHandler(async (req, res)=> {
 })
 
 
+const updateAvatar = asyncHandler(async (req, res) => {
+    // first take user from middleware
+    // give reference => userID
+    // check
+    // take avatar from field
+    // check
+    // upload on cloudinary
+    // check
+    // update in db
+    // check
+    // response
+    
+
+    const userId = req.user?._id
+    if(!userId){
+        throw new ApiError(400, "UserId not found")
+    }
+
+    const avatarLocalPath = req.field?.path
+    if(!avatarLocalPath){
+        throw new ApiError(400, "Avatar is required ")
+    }
+
+    const newAvatar = await uploadOnCloudinary(avatarLocalPath)
+    const updateAvatar = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            newAvatar:{
+                url: newAvatar.url,
+                public_id: newAvatar.public_id
+            }
+        },
+        {new: true}
+    ).select("-passsword -refreshToken")
+
+    return res
+    .status(202)
+    .json(
+        new ApiResponse(
+            200,
+            updateAvatar,
+            "Avatar updated successfully"
+        )
+    )
+})
+
 
 export {
     registerUser,

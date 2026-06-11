@@ -48,5 +48,6 @@ const deleteFromCloudinary = async (
         return response
     } catch (error) {
        console.log("Error during delting cloudinary", error) 
+       return null
     }
 }
