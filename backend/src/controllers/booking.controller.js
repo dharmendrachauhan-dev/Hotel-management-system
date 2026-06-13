@@ -329,8 +329,75 @@ export const getAllBookings = asyncHandler(async (req, res) => {
     )
 })
 
+export const getMyBookings = asyncHandler(async (req, res) => {
+    //ToDo
+    // step1 : get user id from token
+    // verifyjwt already attached req.user
+    // no need => req.params or req.body
+    // step2: Aggregate pipeline
+    //       add collection room to booking 
+    //       show the mybooking to user
+    //       by $project
+    // return response
 
+    const userId = req.user?._id
+    if(!userId){
+        throw new ApiError(400, "Userid not found")
+    }
+
+    const bookings = await Booking.aggregate([
+        {
+            $match: userId
+        },
+        { // join collection to booking
+            $lookup: {
+                from: "rooms",
+                localField: "room",
+                foreignField: "_id",
+                as: "room"
+            }
+        },
+        { // flatten array {..}
+            $unwind: "$room"
+        },
+        {   // make fields
+            //
+            $project: {
+                checkIn: 1,
+                checkOut: 1,
+                guests: 1,
+                totalPrice: 1,
+                bookingStatus: 1,
+                paymentStatus: 1,
+                createdAt: 1,
+
+                // user
+                "room.roomNumber": 1,
+                "room.type": 1,
+                "room.type": 1
+            }
+        },
+        // stage 5: newest first
+        {
+            $sort: {
+                createdAt: -1
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            bookings[0],
+            "My Bookings successfully fetched"
+        )
+    )
+
+})
 export {
     createBooking,
-    getAllBookings
+    getAllBookings,
+    getMyBookings
 }
