@@ -3,6 +3,7 @@ import { ApiResponse } from "../utils/ApiRespose.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { Booking } from "../models/bookings.models.js"
 import { Room } from "../models/rooms.models.js"
+import mongoose, { mongo } from "mongoose";
 
 
 const createBooking = asyncHandler(async (req, res) => {
@@ -396,8 +397,99 @@ export const getMyBookings = asyncHandler(async (req, res) => {
     )
 
 })
+
+
+export const getBookingById = asyncHandler (async (req, res) => {
+    // Step-1 : get bookingId from params
+    // step-2 : validate ObjectId format
+    // step-3 : aggregate pipeline
+    // step-4 : check booking exits
+    // step-5 : restrict other user if other then owner and admin
+    // step -6 : return resonse
+
+    const { Id } = req.params
+
+    if(!mongoose.Types.ObjectId.isValid(id)){
+        throw new ApiError(400, "Invalid BookingId.")
+    }
+
+    const booking = await Booking.aggregate([
+        {
+            $match: new mongoose.Types.ObjectId(Id)
+        },
+        { // join users
+            $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+            }
+        },
+        {
+            $unwind: "$user"
+        },
+        {
+            $lookup: {
+                from: "rooms",
+                localField: "room",
+                foreignField: "_id",
+                as: "room"
+            }
+        },
+        {
+            $unwind: "$user"
+        },
+        {
+            $project: {
+                checkIn: 1,
+                checkOut: 1,
+                guests: 1,
+                totalPrice: 1,
+                bookingStatus: 1,
+                paymentStatus: 1,
+                createdAt: 1,
+
+                // user
+
+                "user._id": 1,
+                "user.fullName": 1,
+                "user.email": 1,
+
+                // room
+
+                "room.roomNumber": 1,
+                "room.type": 1,
+                "room.price": 1
+            }
+        }
+    ])
+    
+    const bookingData = booking[0]
+
+    if(!bookingData){
+        throw new ApiError(404, "Booking not found")
+    }
+
+    const isOwner = bookingData.user._id.toString() === req.user._id.toString()
+    const isAdmin = req.user.role === "admin"
+
+    if(!isOwner && !isAdmin){
+        throw new ApiError(400, "You are not allowed to view this booking.")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            bookingData,
+            "Booking fetched successfully"
+        )
+    )
+})
 export {
     createBooking,
     getAllBookings,
-    getMyBookings
+    getMyBookings,
+    getBookingById
 }
