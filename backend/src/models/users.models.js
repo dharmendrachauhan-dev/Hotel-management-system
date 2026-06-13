@@ -36,30 +36,31 @@ const userSchema = new Schema(
         },
         role: {
             type: String,
-            default: "guest"
+            enum: ["user", "admin"],
+            default: "user"
         },
         refreshToken: {
             type: String
         }
     },
-    {timestamps: true}
+    { timestamps: true }
 )
 
 //mongoose runs before saving user if 
 userSchema.pre("save", async function () {
-    if (!this.isModified("password")) return 
+    if (!this.isModified("password")) return
     this.password = await bcrypt.hash(this.password, 10)
 })
 
 // custom method for password check
-userSchema.methods.isPasswordCorrect = async function(password){
+userSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password)
 }
 
 // custom method
 
 // Generate Access Token
-userSchema.methods.generateAccessToken = function(){
+userSchema.methods.generateAccessToken = function () {
     return jwt.sign(
         {
             _id: this._id,
@@ -75,7 +76,7 @@ userSchema.methods.generateAccessToken = function(){
 }
 
 // Generate Refresh Token
-userSchema.methods.generateRefreshToken = function(){
+userSchema.methods.generateRefreshToken = function () {
     return jwt.sign(
         {
             _id: this._id
