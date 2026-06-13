@@ -6,6 +6,7 @@ import { Room } from "../models/rooms.models.js"
 import mongoose, { mongo } from "mongoose";
 
 
+//Create Booking (create)
 const createBooking = asyncHandler(async (req, res) => {
     // todo
     // validate checkin is before checkout
@@ -136,6 +137,8 @@ const createBooking = asyncHandler(async (req, res) => {
     }
 })
 
+
+// GET Booking (Read)
 export const getAllBookings = asyncHandler(async (req, res) => {
     // step - 1 : Extract query params from req.query
     // get /booking?bookingStatus=confirmed&page=2&limit=10
@@ -487,9 +490,203 @@ export const getBookingById = asyncHandler (async (req, res) => {
         )
     )
 })
+
+//Update
+const updateBooking = asyncHandler(async (req, res)=>{
+    // ToDo
+    // step 1 = validate :id is valid objectId
+    // step  2 = find booking by id
+    // step 3 = check booking exists
+    // step 4 =  check requester is the owner (not admin, only owner can edit their booking)
+    // step 5 = check bookingStatus is "pending" only
+        // if "confirmed" or "Failed" or "completed" => clock edit
+    // step 6 = validate new dates if provided
+        // checkIn must not be in past
+        // checkOut must be after checkIn
+    // step 7 = validate guests if provided (same as create)
+    // step 8 = check room availability for new dates (exclusive current booking)
+    // step 9 = recalculate totalPrice if dates changed
+    // step 10 = update and return
+
+    const { id } = req.params
+
+    if(!mongoose.Types.ObjectId.isValid(id)){
+        throw new ApiError(400, "Invalid Booking Id")
+    }
+
+    const booking = await Booking.findById(id)
+    if(!booking){
+        throw new ApiError(400, "Booking not found")
+    }
+
+    const isOwner = booking.user.isString() === req.user._id.toString()
+    if(!isOwner){
+        throw new ApiError(400, "You are not allowed to update the booking")
+    }
+    
+    if(booking.bookingStatus !== "Pending"){
+        throw new ApiError(400, `Can not update a booking with status ${booking.bookingWithDetails}`)
+    }
+
+    const { checkIn, checkOut, guests }  = req.body
+
+    // use new dates if provided , otherwise keep existing
+    const newCheckIn = checkIn ? new Date(checkIn) : booking.checkIn
+    const newCheckOut = checkOut ? new Date(checkOut) : booking.checkOut
+    const now = new Date()
+
+    // validate new date
+    if(checkIn || checkOut){
+        if(isNaN(newCheckIn.getTime())){
+            throw new ApiError(400, "CheckIn is not a valid date.")
+        }
+        if(isNaN(newCheckOut.getTime())){
+            throw new ApiError(400, "CheckOut is not a valid date")
+        }
+        if(newCheckIn <= now){
+            throw new ApiError(400, "Checkin can not be in past")
+        }
+        if(newCheckOut <= newCheckIn){
+            throw new ApiError(400, "New checkout date must be greater than new check in")
+        }
+    }
+
+    if(guests){
+
+        if(!Array.isArray(guests)) throw new ApiError(400, "Guests must be an array")
+        if(guests.length === 0) throw new ApiError(400, "At least 1 guest is required")
+        
+        const errors = []
+        guests.forEach((guest, index)=> {
+            const position = `Guest ${index + 1}`
+
+            if(!guest.type || ['adult', 'children'].includes(guest.type.toLowerCase())){
+                errors.push(`${position}: type must be "adult" or "children"`)
+            }
+
+            if(!guest.firstname || typeof guest.lastname !== "string") {
+                errors.push(400, `${position}: firstname is required`)
+            }
+
+            if(!guest.lastname || typeof guest.lastname !== "string"){
+               errors.push(400, `${position}: lastname is required`)
+            }
+
+            if(guest.age === undefined || guest.age === null){
+                errors.push(400, `${position}: age cannot be negative`)
+            } else if(typeof guest.age !== "number"){
+                errors.push(`${position}: age must be a number`)
+            } else if(guest.age < 0){
+                errors.push(`${position}: age cannot be negative`)
+            } else if(guest.type === "adult" && guest.age < 18){
+                errors.push(`${position}: adult must be at least 18`)
+            } else if(guest.type === "children" && guest.age >= 18) {
+                errors.push(`${position}: children must be under 18`)
+            }
+        })
+
+        if(errors.length > 0) throw new ApiError(400, errors.join(", "))
+    }
+
+
+    if(checkIn || checkOut){
+        const overlappingBooking = await Booking.findOne({
+            _id: {$ne: booking._id},
+            room: booking.room,
+            bookingStatus: {$nin: ["Failed", "Completed"]},//Value must not be in the array
+            checkIn: {$lt: newCheckOut},
+            checkOut: {$gt: newCheckIn}
+        })
+
+        if(overlappingBooking){
+            throw new ApiError(409, "Room is not available for the selected dates")
+        }
+    }
+
+
+    let totalPrice = booking.totalPrice // keep existing if date not changed
+    if(checkIn || checkOut){
+        const room = await Room.findById(booking.room) // you can not change room after booking and where this came from room: roomId it is in the req.body
+        const nights = Math.ceil((newCheckOut - newCheckIn) / (1000*60*60*24))
+        totalPrice = nights * room.price
+    }
+
+    const updatedBooking = await Booking.findByIdAndUpdate(
+        id,
+        {
+            checkIn: newCheckIn,
+            checkOut: newCheckOut,
+            totalPrice,
+            ...(guests && { guests })
+        },
+        {new: true}
+    )
+
+    // shapping data
+    const bookingWithDetails = await Booking.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(id)
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+            }
+        },
+        {
+            $unwind: "$user"
+        },
+        {
+            $lookup: {
+                from: "rooms",
+                localField: "room",
+                foreignField: "_id",
+                as: "room"
+            }
+        },
+        {
+            $unwind: "$room"
+        },
+        {
+            $project: {
+                checkIn: 1,
+                checkOut: 1,
+                guests: 1,
+                totalPrice: 1,
+                bookingStatus: 1,
+                paymentStatus: 1,
+                createdAt: 1,
+
+                "user.fullName": 1,
+                "user.email": 1,
+
+                "room.roomNumber": 1,
+                "room.type": 1,
+                "room.price": 1
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            bookingWithDetails[0],
+            "Booking updated successfully"
+        )
+    )
+})
+
+
 export {
     createBooking,
     getAllBookings,
     getMyBookings,
-    getBookingById
+    getBookingById,
+    updateBooking
 }
