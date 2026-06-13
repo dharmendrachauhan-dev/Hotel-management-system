@@ -139,7 +139,7 @@ const createBooking = asyncHandler(async (req, res) => {
 
 
 // GET Booking (Read)
-export const getAllBookings = asyncHandler(async (req, res) => {
+const getAllBookings = asyncHandler(async (req, res) => {
     // step - 1 : Extract query params from req.query
     // get /booking?bookingStatus=confirmed&page=2&limit=10
     // req.query = { bookingStatus: "Confirmed", page: "2", limit: "10" }
@@ -333,7 +333,7 @@ export const getAllBookings = asyncHandler(async (req, res) => {
     )
 })
 
-export const getMyBookings = asyncHandler(async (req, res) => {
+const getMyBookings = asyncHandler(async (req, res) => {
     //ToDo
     // step1 : get user id from token
     // verifyjwt already attached req.user
@@ -402,7 +402,7 @@ export const getMyBookings = asyncHandler(async (req, res) => {
 })
 
 
-export const getBookingById = asyncHandler (async (req, res) => {
+const getBookingById = asyncHandler (async (req, res) => {
     // Step-1 : get bookingId from params
     // step-2 : validate ObjectId format
     // step-3 : aggregate pipeline
@@ -491,7 +491,7 @@ export const getBookingById = asyncHandler (async (req, res) => {
     )
 })
 
-//Update
+//Update Booking (Update)
 const updateBooking = asyncHandler(async (req, res)=>{
     // ToDo
     // step 1 = validate :id is valid objectId
@@ -682,11 +682,107 @@ const updateBooking = asyncHandler(async (req, res)=>{
     )
 })
 
+// This is only for admin only
+const updateBookingStatus = asyncHandler(async (req, res) => {
+    // ToDo
+    // step 1- validate :id is valid ObjectId
+    // step 2- find booking by id
+    // step 3- check booking exists
+    // step 4- validate new bookingStatus value is in enum
+    // ["Pending", "Confirmed", "Failed", "Completed"]
+    // step 5- update and return
+
+    const { id } = req.params
+
+    if(!mongoose.Types.ObjectId.isValid(id)){
+        throw new ApiError(400, "Invalid booking ID")
+    }
+
+    const booking = await Booking.findById(id)
+
+    if(!booking){
+        throw new ApiError(400, "Booking not found")
+    }
+
+    const { bookingStatus } = req.body
+    const allowedStatus = ["Pending", "Confirmed", "Failed", "Completed"]
+
+    if(!bookingStatus){
+        throw new ApiError(400, "BookingStatus is required")
+    }
+
+    if(!allowedStatus.includes(bookingStatus)){
+        throw new ApiError(400, `Booking status must be one of: ${allowedStatus.join(", ")}`)
+    }
+
+    await Booking.findByIdAndUpdate(
+        id,
+        { bookingStatus },
+        { new: true }
+    )
+
+    const updateBooking = await Booking.aggregate([
+        {
+            $match: new mongoose.Types.ObjectId(id)
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+            }
+        },
+        {
+            $unwind: "$user"
+        },
+        {
+            $lookup: {
+                from: "rooms",
+                localField: "room",
+                foreignField: "_id",
+                as: "room"
+            }
+        },
+        {
+            $unwind: "$room"
+        },
+        {
+            $project: {
+                checkIn: 1,
+                checkOut: 1,
+                guests: 1,
+                totalPrice: 1,
+                bookingStatus: 1,
+                paymentStatus: 1,
+                createdAt: 1,
+
+                "user.fullName": 1,
+                "user.email": 1,
+
+                "room.roomNumber": 1,
+                "room.type": 1,
+                "room.price": 1,
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            updateBooking[0],
+            "Booking status updated successfully"
+        )
+    )
+})
 
 export {
     createBooking,
     getAllBookings,
     getMyBookings,
     getBookingById,
-    updateBooking
+    updateBooking,
+    updateBookingStatus
 }
