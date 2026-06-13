@@ -682,7 +682,7 @@ const updateBooking = asyncHandler(async (req, res)=>{
     )
 })
 
-// This is only for admin only
+// This is only for admin only bookingStatus
 const updateBookingStatus = asyncHandler(async (req, res) => {
     // ToDo
     // step 1- validate :id is valid ObjectId
@@ -778,11 +778,113 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     )
 })
 
+// This is only for admin only paymentStatus
+const updatePaymentStatus = asyncHandler(async (req, res) => {
+    // todo
+    // step 1 = validate :id is valid objectId
+    // step 2 = find booking by id
+    // step 3 = check booking exists
+    // step 4 = validate new paymentStatus value is in enum
+    // ["Pending", "Paid", "Failed", "Completed"]
+    // step 5 = if payment => "paid" then auto set booking status => "confirmed"
+    // step 5 = update and return
+
+    const { id } = req.params
+    if(!mongoose.Types.ObjectId.isValid(id)){
+        throw new ApiError(400, "BookingId is invalid")
+    }
+
+    const booking = await Booking.findById(id)
+    if(!booking){
+        throw new ApiError(400, "Booking not found")
+    }
+
+    const { paymentStatus } = req.body
+    const allowedPaymentStatus = ["Pending", "Paid", "Failed", "Completed"]
+
+    if(!paymentStatus){
+        throw new ApiError(400 , "Payment Status is required")
+    }
+
+    if(!allowedPaymentStatus.includes(paymentStatus)){
+        throw new ApiError(400, `Payment status is one of the: ${allowedPaymentStatus.join(", ")}`)
+    }
+
+    const updateFields = { paymentStatus }
+    if(paymentStatus === "Paid"){
+        updateFields.bookingStatus = "Confirmed"
+    }
+
+    await Booking.findByIdAndUpdate(
+        id,
+        updateFields,
+        {new: true}
+    )
+
+    const updatedBooking = await Booking.aggregate([
+        {
+            $match: new mongoose.Types.ObjectId(id)
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+            }
+        },
+        {
+            $unwind: "$user"
+        },
+        {
+            $lookup: {
+                from: "rooms",
+                localField: "room",
+                foreignField: "_id",
+                as: "room"
+            }
+        },
+        {
+            $unwind: "$room"
+        },
+        {
+            $project: {
+                checkIn: 1,
+                checkOut: 1,
+                guests: 1,
+                totalPrice: 1,
+                bookingStatus: 1,
+                paymentStatus: 1,
+                createdAt: 1,
+
+                "user.fullName": 1,
+                "user.email": 1,
+
+                "room.roomNumber": 1,
+                "room.type": 1,
+                "room.price": 1
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            updatedBooking[0],
+            "Payment status successfully updated"
+        )
+    )
+
+
+})
 export {
     createBooking,
     getAllBookings,
     getMyBookings,
     getBookingById,
     updateBooking,
-    updateBookingStatus
+    updateBookingStatus,
+    updatePaymentStatus
 }
