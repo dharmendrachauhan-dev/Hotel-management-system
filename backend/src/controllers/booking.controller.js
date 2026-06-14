@@ -344,14 +344,14 @@ const getMyBookings = asyncHandler(async (req, res) => {
     //       by $project
     // return response
 
-    const userId = req.user?._id
+    const  userId  = req.user?._id
     if(!userId){
         throw new ApiError(400, "Userid not found")
     }
 
     const bookings = await Booking.aggregate([
         {
-            $match: userId
+            $match: {user: userId}  // "user is field name in booking schema"// userId is the value to match against
         },
         { // join collection to booking
             $lookup: {
@@ -364,8 +364,7 @@ const getMyBookings = asyncHandler(async (req, res) => {
         { // flatten array {..}
             $unwind: "$room"
         },
-        {   // make fields
-            //
+        {   // make fields and reshape the data
             $project: {
                 checkIn: 1,
                 checkOut: 1,
@@ -375,10 +374,10 @@ const getMyBookings = asyncHandler(async (req, res) => {
                 paymentStatus: 1,
                 createdAt: 1,
 
-                // user
+                // room
                 "room.roomNumber": 1,
                 "room.type": 1,
-                "room.type": 1
+                "room.price": 1
             }
         },
         // stage 5: newest first
@@ -394,7 +393,7 @@ const getMyBookings = asyncHandler(async (req, res) => {
     .json(
         new ApiResponse(
             200,
-            bookings[0],
+            bookings,
             "My Bookings successfully fetched"
         )
     )
@@ -440,7 +439,7 @@ const getBookingById = asyncHandler (async (req, res) => {
             }
         },
         {
-            $unwind: "$user"
+            $unwind: "$room"
         },
         {
             $project: {
@@ -876,9 +875,9 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
             "Payment status successfully updated"
         )
     )
-
-
 })
+
+
 export {
     createBooking,
     getAllBookings,
