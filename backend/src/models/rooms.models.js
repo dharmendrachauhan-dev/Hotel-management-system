@@ -24,7 +24,6 @@ const roomSchema = new Schema(
         },
         description: {
             type: String,
-            default: "This is clean and ready to use top class room for your family",
             trim: true
         },
         amenities: [String], //this should be in array
