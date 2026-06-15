@@ -273,8 +273,170 @@ const getRoomById = asyncHandler(async (req, res) => {
     )
 })
 
+const updateRoom = asyncHandler(async (req, res)=> {
+    /*
+        step1 => getid from req.params
+        step2 => validate ObjectId format
+        step3 => find room by id => 404 if not found
+        step4 => extract fields from req.body only update fields thet are provided
+        step5 => validate provided fields
+                roomType => must be valid enum if provided
+                price => must be number, min 0 if provided
+                capacity => must be number min 1 if provided
+                amenities => must be array of strings if provided
+                images => must be array ofstrings if provided
+                isAvailable => must be boolean if provided
+
+        step6 => if roomNumber provided check it is not taken by another room
+                Room.findOne({ roomNumber, _id: { $ne: id } )   
+        
+        step7 => update room 
+                Room.findByIdAndUpdate(id, updateFields, {new : true})
+        
+        step8 => return response 200
+    */
+
+    const {roomId} = req.params
+
+    if(!mongoose.Types.ObjectId.isValid(roomId)){
+        throw new ApiError(400, "Invalid roomId")
+    }
+
+    const room = await Room.findById(roomId)
+    if(!room){
+        throw new ApiError(404, "Room not found")
+    }
+
+    const { 
+        roomType,
+        roomNumber,
+        description,
+        price,
+        capacity,
+        amenities,
+        images,
+        isAvailable
+    } = req.body
+
+    const errors = []
+
+    const allowedRoomTypes = ["Single", "Double", "Deluxe", "Suite"]
+
+    if(roomNumber !== undefined & typeof roomNumber !== "number"){
+        errors.push("roomNumber must be a number")
+    }
+
+    if(roomType !== undefined && !allowedRoomTypes.includes(roomType)){
+        errors.push(`roomType must be one of: ${allowedRoomTypes.join(", ")}`)
+    }
+
+    if(price !== undefined){
+        if(typeof price !== "number"){
+            errors.push("Price must be an number")
+        } else if (price < 0) {
+            errors.push("Price cannot be negative")
+        }
+    }
+
+    if(capacity !== undefined){
+        if(typeof capacity !== "number"){
+            errors.push("capacity must be number")
+        } else if (capacity < 1){
+            errors.push("capacity cannot be negative")
+        }
+    }
+
+    if(amenities !== undefined){
+        if(!Array.isArray(amenities)){
+            errors.push("amenities must be an array")
+        } else if(amenities.every(items => typeof items !== "string")){
+            errors.push("amenities must be string")
+        }
+    }
+
+    if(images !== undefined){
+        if(!Array.isArray(images)){
+            errors.push('images must be an array')
+        } else if(images.every(items => typeof items !== "string")){
+            errors.push("images must be an string")
+        }
+    }
+
+    if(isAvailable !== undefined && isAvailable !== "boolean"){
+        errors.push("isAvailable must be a boolean")
+    }
+
+    if(errors.length > 0){
+        throw new ApiError(400, errors.join(", "))
+    }
+
+    if(roomNumber){
+        const existingRoom = await Room.findOne({
+            roomNumber,
+            _id: { $ne: id }
+        })
+
+        if(existingRoom){
+            throw new ApiError(409, "Room number already taken")
+        }
+    }
+
+    const updateFields = {}
+
+    if(roomNumber !== undefined){
+        updateFields.roomNumber = roomNumber
+    }
+
+    if(roomType !== undefined) {
+        updateFields.roomType = roomType
+    }
+
+    if(price !== undefined){
+        updateFields.roomType = roomType
+    }
+
+    if(capacity !== undefined){
+        updateFields.capacity = capacity
+    }
+
+    if(descrition !== undefined){
+        updateFields.description = description
+    }
+    
+    if(amenities !== undefined){
+        updateFields.amenities = amenities
+    }
+
+    if(images !== undefined){
+        updateFields.images = images
+    }
+
+    if(isAvailable){
+        updateFields.isAvailable = isAvailable
+    }
+
+    // update the room
+
+    const updatedRoom = await Room.findByIdAndUpdate(
+        id,
+        updateFields,
+        {new: true}
+    )
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            updatedRoom,
+            "Room updated successfully"
+        )
+    )
+})
+
 export {
     creatRoom,
     getAllRooms,
-    getRoomById
+    getRoomById,
+    updateRoom
 }
