@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiRespose.js"
 import { Room } from "../models/rooms.models.js"
+import mongoose from 'mongoose'
 
 
 //CRUD
@@ -241,7 +242,39 @@ const getAllRooms = asyncHandler(async (req, res) => {
 
 })
 
+const getRoomById = asyncHandler(async (req, res) => {
+    /*
+    Todo
+    step1 => getId from req.params
+    ste2 => validate ObjectId format
+    step3 => find room by id Room.findbyId(id)
+    step4 => check room exits => 404 if not
+    step5 => return response 200
+    */
+
+    const { id } = req.params
+    if(!mongoose.Types.ObjectId.isValid(id)){
+        throw new ApiError(400, "Invalid id")
+    }
+
+    const userRoom = await Room.findById(id)
+    if(!userRoom){
+        throw new ApiError(404, "User room not found")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            userRoom,
+            "Room fetched successfully"
+        )
+    )
+})
+
 export {
     creatRoom,
-    getAllRooms
+    getAllRooms,
+    getRoomById
 }
