@@ -434,9 +434,62 @@ const updateRoom = asyncHandler(async (req, res)=> {
     )
 })
 
+
+const deleteRoom = asyncHandler(async (req, res) => {
+    /*
+    step1 => getId from req.params
+    step2 => validate objectId format
+    step3 => find room => 404
+    step4 => check room has no active bookings
+            Booking.findOne({
+                room: id,
+                bookingStatus: { $nin: ["Failed", "Completed"] }
+            })
+                if active bookings exist => 400 cannot delete
+
+    step5 => delete room
+        Room.findByIdAndDelete(id)
+
+    step6 => return response 200
+    */
+
+    const { id } = req.params
+    if(!mongoose.Types.ObjectId.isValid(id)){
+        throw new ApiError(400, "Invalid Id")
+    }
+
+    const room = await Room.findById(id)
+    if(!room){
+        throw new ApiError(400, "Room not found")
+    }
+
+    const activeBooking = await Booking.findOne({
+        room: id,
+        bookingStatus: {$nin: ["Failed", "Completed"]}  // it blocks the Completed and Failed from deletion
+    })
+
+    if(activeBooking){
+        throw new ApiError(400, "Cannot delete room with active bookings")
+    }
+    
+    await Room.findByIdAndDelete(id)
+    
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            null,
+            "Room deleted successfully"
+        )
+    )
+
+})
+
 export {
     creatRoom,
     getAllRooms,
     getRoomById,
-    updateRoom
+    updateRoom,
+    deleteRoom
 }
