@@ -55,5 +55,55 @@ const createReview = asyncHandler (async (req, res) => {
     if(!booking){
         throw new ApiError(403, "You can only review a room you have stayed in")
     }
-    
+
+    // check user has not already reviewed this room
+
+    const review = await Review.findOne({
+        user: req.user._id,
+        room: roomId
+    })
+
+    if(review){
+        throw new ApiError(409, "You have already reviewed this room")
+    }
+
+    const {rating, comment} = req.body
+
+    if(rating === undefined || rating === null){
+        throw new ApiError(400, "rating is required")
+    }
+
+    if(typeof rating !== "number"){
+        throw new ApiError(400, "rating must be number")
+    }
+
+    if(rating < 1 || rating > 5){
+        throw new ApiError(400, "rating is between 1 and 5")
+    }
+
+    if(comment !== undefined && typeof comment !== 'string'){
+        throw new ApiError(400, "commen must be a string")
+    }
+
+    // step 6 => create review 
+    const review = await Review.create({
+        user: req.user._id,
+        room: roomId,
+        ...(comment && {comment: comment.trim()})
+    })
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            201,
+            review,
+            "Review created successfully"
+        )
+    )
+
 })
+
+export {
+    createReview
+}
