@@ -260,7 +260,58 @@ const updateReview = asyncHandler(async (req, res) => {
 })
 
 
+const deleteReview = asyncHandler(async (req, res) => {
+    // step 1 => validate roomId and reviewId from req.params
+    // stept 2 => find Review => 404 if not found
+    // step 3 => check owner or main
+        // isOwner = review.user.toString() === req.user._id.toString()
+        // isAdmin = req.user.role === "admin"
+        // if not owner AND not admin => 403
+
+    // step 4 => delete review
+    //           Review.findByIdAndDelete(id)
+
+    // step 5 => return response 200
+
+    const {roomId , reviewId} = req.params
+
+    if(!mongoose.Types.ObjectId.isValid(roomId)){
+        throw new ApiError(400, "Invalid roomId")
+    }
+
+    if(!mongoose.Types.ObjectId.isValid(reviewId)){
+        throw new ApiError(400, "Invalid reviewId")
+    }
+
+    const review = await Review.findById(reviewId)
+    if(!review){
+        throw new ApiError(400, "Review not found")
+    }
+
+    const isOwner = review.user.toString() !== req.user._id.toString()
+    if(!isOwner){
+        throw new ApiError(403, "You are not allowed this review")
+    }
+
+    const isAdmin = req.user.role === "admin"
+    if(!isAdmin){
+        throw new ApiError(403, "You are not allowed to delete review")
+    }
+
+    return res 
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            null,
+            "Review deleted successfully"
+        )
+    )
+})
+
 export {
     createReview,
-    getRoomReviews
+    getRoomReviews,
+    updateReview,
+    deleteReview
 }
