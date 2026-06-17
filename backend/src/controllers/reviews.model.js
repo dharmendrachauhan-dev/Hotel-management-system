@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiRespose.js";
 import { Review } from "../models/reviews.models.js";
 import { Room } from "../models/rooms.models.js"
-import mongoose from "mongoose";
+import mongoose, { mongo } from "mongoose";
 import { Booking } from "../models/bookings.models.js";
 
 const createReview = asyncHandler (async (req, res) => {
@@ -35,7 +35,7 @@ const createReview = asyncHandler (async (req, res) => {
         // step - 7 return response 201
      */
 
-    const { roomId } = req.body
+    const { roomId } = req.params
    
     if(!mongoose.Types.ObjectId.isValid(roomId)){
         throw new ApiError(400, "Invalid roomId")
@@ -104,6 +104,87 @@ const createReview = asyncHandler (async (req, res) => {
 
 })
 
+const getRoomReviews = asyncHandler(async (req, res) => {
+    const {roomId} = req.params
+
+    if(!mongoose.Types.ObjectId.isValid(roomId)){
+        throw new ApiError(400, "Invalid RoomId")
+    }
+
+    const room = await Room.findById(roomId)
+    if(!room){
+        throw new ApiError(400, "Room do not exists")
+    }
+
+    const reviews = await Review.aggregate([
+        {
+            $match: {room : new mongoose.Types.ObjectId(roomId)}
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+            }
+        },
+        { // flatten user
+            $unwind: "$user"
+        },
+        { // project fields
+            $project: {
+                "rating": rating,
+                "comment": comment,
+
+                "user.fullName": fullName,
+                "user.avatar": avatar
+            }
+        },
+        {
+            $sort: { createdAt: -1 }
+        }
+    ])
+
+    // Get average rating 
+    const ratingStats = await Review.aggregate([
+        {
+            $match: {
+                room: new mongoose.Types.ObjectId(roomId)
+            }
+        },
+        {
+            $group: {
+                _id: "$room",
+                averageRating: { $avg: "$rating" },
+                totalReviews: { $sum: 1 }
+
+                //$sum: 1 => count total rating values
+                //$avg: average of all rating values
+            }
+        }
+    ])
+
+    const averageRating = ratingStats[0]?.averageRating?.toFixed(1) || 0
+    const totalReviews = ratingStats[0]?.totalReviews || 0
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                reviews,
+                averageRating,
+                totalReviews,
+            },
+            "Reviews fetched successfully"
+        )
+    )
+})
+
+
+
 export {
-    createReview
+    createReview,
+    getRoomReviews
 }
