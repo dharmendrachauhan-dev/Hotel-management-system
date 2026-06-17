@@ -6,7 +6,7 @@ import { Room } from "../models/rooms.models.js"
 import mongoose, { mongo } from "mongoose";
 import { Booking } from "../models/bookings.models.js";
 
-const createReview = asyncHandler (async (req, res) => {
+const createReview = asyncHandler(async (req, res) => {
     /**
         // todo
         // step - 1 Validate roomId from req.params
@@ -36,13 +36,13 @@ const createReview = asyncHandler (async (req, res) => {
      */
 
     const { roomId } = req.params
-   
-    if(!mongoose.Types.ObjectId.isValid(roomId)){
+
+    if (!mongoose.Types.ObjectId.isValid(roomId)) {
         throw new ApiError(400, "Invalid roomId")
     }
 
     const room = await Room.findById(roomId)
-    if(room){
+    if (room) {
         throw new ApiError(404, "Room not found")
     }
 
@@ -52,7 +52,7 @@ const createReview = asyncHandler (async (req, res) => {
         room: roomId
     })
 
-    if(!booking){
+    if (!booking) {
         throw new ApiError(403, "You can only review a room you have stayed in")
     }
 
@@ -63,25 +63,25 @@ const createReview = asyncHandler (async (req, res) => {
         room: roomId
     })
 
-    if(review){
+    if (review) {
         throw new ApiError(409, "You have already reviewed this room")
     }
 
-    const {rating, comment} = req.body
+    const { rating, comment } = req.body
 
-    if(rating === undefined || rating === null){
+    if (rating === undefined || rating === null) {
         throw new ApiError(400, "rating is required")
     }
 
-    if(typeof rating !== "number"){
+    if (typeof rating !== "number") {
         throw new ApiError(400, "rating must be number")
     }
 
-    if(rating < 1 || rating > 5){
+    if (rating < 1 || rating > 5) {
         throw new ApiError(400, "rating is between 1 and 5")
     }
 
-    if(comment !== undefined && typeof comment !== 'string'){
+    if (comment !== undefined && typeof comment !== 'string') {
         throw new ApiError(400, "commen must be a string")
     }
 
@@ -89,36 +89,36 @@ const createReview = asyncHandler (async (req, res) => {
     const review = await Review.create({
         user: req.user._id,
         room: roomId,
-        ...(comment && {comment: comment.trim()})
+        ...(comment && { comment: comment.trim() })
     })
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            201,
-            review,
-            "Review created successfully"
+        .status(200)
+        .json(
+            new ApiResponse(
+                201,
+                review,
+                "Review created successfully"
+            )
         )
-    )
 
 })
 
 const getRoomReviews = asyncHandler(async (req, res) => {
-    const {roomId} = req.params
+    const { roomId } = req.params
 
-    if(!mongoose.Types.ObjectId.isValid(roomId)){
+    if (!mongoose.Types.ObjectId.isValid(roomId)) {
         throw new ApiError(400, "Invalid RoomId")
     }
 
     const room = await Room.findById(roomId)
-    if(!room){
+    if (!room) {
         throw new ApiError(400, "Room do not exists")
     }
 
     const reviews = await Review.aggregate([
         {
-            $match: {room : new mongoose.Types.ObjectId(roomId)}
+            $match: { room: new mongoose.Types.ObjectId(roomId) }
         },
         {
             $lookup: {
@@ -168,20 +168,96 @@ const getRoomReviews = asyncHandler(async (req, res) => {
     const totalReviews = ratingStats[0]?.totalReviews || 0
 
     return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    reviews,
+                    averageRating,
+                    totalReviews,
+                },
+                "Reviews fetched successfully"
+            )
+        )
+})
+
+
+const updateReview = asyncHandler(async (req, res) => {
+    // TODO
+    // step 1 = validate roomId and reviewId from req.params
+    // step 2 = find review by id => 404 if not found
+    // step 3 = check req is the owner of the review
+    // review.user.toString() === req.user._id.toString()
+    // if not owner => 403
+
+    // step 4 => validate provided fields
+    //  rating => must be number , min 1 max 5 if provided
+    //  comment => must be string if provided
+
+    // step: 5 => update review 
+    // only update fields that are provided
+
+    // step 6 => return reponse 200
+
+    const { roomId, reviewId } = req.params
+
+    if (!mongoose.Types.ObjectId.isValid(roomId)) {
+        throw new ApiError(400, "Invalid roomId")
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+        throw new ApiError(400, "Invalid reviewId")
+    }
+
+    const review = await Review.findById(reviewId)
+    if (!review) {
+        throw new ApiError(404, "review not found")
+    }
+
+    const isOwner = review.user.toString() !== req.user._id.toString()
+    if (!isOwner) {
+        throw new ApiError(403, "you are not authorized to update this review")
+    }
+
+    const { rating, comment } = req.body
+
+    if (rating !== undefined) {
+        if (typeof rating !== "number") {
+            throw new ApiError(400, "rating must be number")
+        }
+
+        if (rating < 1 || rating > 5) {
+            throw new ApiError(403, "Rating must be in between 1 to 5")
+        }
+    }
+
+    if (comment !== undefined && typeof comment !== "string") {
+        throw new ApiError(403, "Comment must be string")
+    }
+
+    const updateFields = {}
+
+    if (rating !== undefined) updateFields.rating = rating
+
+    if (comment !== undefined) updateFields.comment = rating
+
+    const updatedReview = await Review.findByIdAndUpdate(
+        reviewId,
+        updateFields,
+        { new: true }
+    )
+
+    return res
     .status(200)
     .json(
         new ApiResponse(
             200,
-            {
-                reviews,
-                averageRating,
-                totalReviews,
-            },
-            "Reviews fetched successfully"
+            updatedReview,
+            "Review succefully updated"
         )
     )
 })
-
 
 
 export {
