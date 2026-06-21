@@ -334,6 +334,24 @@ export const getPaymentById = asyncHandler(async (req, res)=> {
     )
 })
 
+
+export const updatePaymentStatus = asyncHandler(async (req, res) => {
+    /**
+     * todo
+     * step 1=> validate ObjectId
+     * step 2=> find payment => 404 if not found
+     * step 3=> validate new status is in enum
+     * step 4=> update payment status
+     * step 5=> sync with booking
+     *  status "Completed" => booking.paymentStatus = "Paid", bookingStatus = "Confirmed"
+     *  status "Refunded" => booking.paymentStatus = "Failed", (or your own rule)
+     *  status "Failed" => booking.paymentStatus => "Failed"
+     *  => return response
+     */
+
+    
+})
+
 export {
     createpayment,
     getAllPayments,
