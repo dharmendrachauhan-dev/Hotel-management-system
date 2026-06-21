@@ -297,7 +297,46 @@ const getMyPayments = asyncHandler(async (req, res) => {
     )
 })
 
+
+export const getPaymentById = asyncHandler(async (req, res)=> {
+    /**
+     * step -1 validate ObjectId
+     * step 02 find payment , populate booking
+     * step 03 check requester owns the booking OR is admin
+     * step 04 return response
+     */
+
+    const {userId} = req.params
+    if(!mongoose.Types.ObjectId.isValid(userId)){
+        throw new ApiError(400, "Invalid userId")
+    }
+
+    const payment = await Payment.findById(userId).populate("booking")
+    if(!payment){
+        throw new ApiError(400, "payment not found")
+    }
+
+    const isAdmin = req.user.role === "admin"
+    const isOwner = payment.booking.user.toString() === req.user._id.toString()
+
+    if(!isOwner && !isAdmin){
+        throw new ApiError(400, "You are not allowed to view this payment")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            payment,
+            "Payment fetched successfully"
+        )
+    )
+})
+
 export {
     createpayment,
-    getAllPayments
+    getAllPayments,
+    getMyPayments,
+    getPaymentById
 }
