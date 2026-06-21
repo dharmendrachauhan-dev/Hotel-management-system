@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiRespose.js";
 import { jsx } from "react/jsx-runtime";
 import { Payment } from "../models/payments.models.js";
+import mongoose from "mongoose";
 
 
 const allowedMethod = ["Card", "UPI", "Cash", "Net Banking"]
@@ -138,23 +139,23 @@ const getAllPayments = asyncHandler(async (req, res) => {
     // step 5 => return response with pagination meta
      */
 
-    const {status,
+    const { status,
         paymentMethod,
-        page = 1, 
+        page = 1,
         limit = 10
     } = req.query
 
     const filter = {}
 
-    if(status){
-        if(!allowedStatus.includes(status)){
+    if (status) {
+        if (!allowedStatus.includes(status)) {
             throw new ApiError(400, `status must be one of : ${allowedStatus.join(", ")}`)
         }
         filter.status = status
     }
 
-    if(paymentMethod) {
-        if(!allowedMethod.includes(paymentMethod)){
+    if (paymentMethod) {
+        if (!allowedMethod.includes(paymentMethod)) {
             throw new ApiError(400, `paymentMethod must be one of: ${allowedMethods.join(", ")}`)
         }
         filter.paymentMethod = paymentMethod
@@ -166,7 +167,7 @@ const getAllPayments = asyncHandler(async (req, res) => {
 
     // aggregate pipeline
     const payments = await Payment.aggregate([
-        {$match: filter},
+        { $match: filter },
 
         // join booking
         {
@@ -209,38 +210,92 @@ const getAllPayments = asyncHandler(async (req, res) => {
                 "user.email": 1,
             }
         },
-        {$sort: { createdAt : -1}},
-        {$skip: skip},
-        {$limit: limitNumber}
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limitNumber }
     ])
 
     const totalPayments = await Payment.countDocuments(filter)
     const totalPages = Math.ceil(totalPayments / limitNumber)
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            {
-                payments,
-                pagination: {
-                    totalPayments,
-                    totalPages,
-                    currentPage: pageNumber,
-                    limit: limitNumber,
-                    hasNextPage: pageNumber < totalPages,
-                    hasPrevPage: pageNumber > 1
-                }
-            },
-            "Payments fetched successfully"
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    payments,
+                    pagination: {
+                        totalPayments,
+                        totalPages,
+                        currentPage: pageNumber,
+                        limit: limitNumber,
+                        hasNextPage: pageNumber < totalPages,
+                        hasPrevPage: pageNumber > 1
+                    }
+                },
+                "Payments fetched successfully"
+            )
         )
-    )
 
 
 })
 
+const getMyPayments = asyncHandler(async (req, res) => {
+    // todo
+    // step _1 => get userId from req.user
+    // step _2 => aggregatr pipeline
+    // join booking collection 
+    // filter where booking.user === userId
+    // (payment doesn't have direct usr field, so must go through booking)
 
+    const { userId } = req.user._id
+
+    // payment has no direct user field
+    // must go through booking to find user's payment's
+    const payments = await Payment.aggregate([
+        {
+            $lookup: {
+                from: "bookings",
+                localField: "booking",
+                foreignField: "_id",
+                as: "booking"
+            }
+        },
+        { $unwind: "$booking" },
+        // now filter by booking's user
+        {
+            $match: {
+                "booking.user": userId
+            }
+        },
+        {
+            $project: {
+                amount: 1,
+                paymentMethod: 1,
+                transactionId: 1,
+                status: 1,
+                paidAt: 1,
+                createdAt: 1,
+
+                "booking.user": 1,
+                "booking.checkIn": 1,
+                "booking.checkOut": 1
+            }
+        },
+        { $sort: { createdAt: -1 } },
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            payments,
+            "My payments fetched successfully"
+        )
+    )
+})
 
 export {
     createpayment,
