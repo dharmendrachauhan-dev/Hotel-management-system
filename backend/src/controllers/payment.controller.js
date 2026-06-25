@@ -349,12 +349,63 @@ export const updatePaymentStatus = asyncHandler(async (req, res) => {
      *  => return response
      */
 
+    const {id} = req.params
+    if(!mongoose.Types.ObjectId.isValid(id)){
+        throw new ApiError(400, "Invalid payment ID")
+    }
+
+    const payment = await Payment.findById(id)
+    if(!payment){
+        throw new ApiError(404, "Payment not found")
+    }
     
+    const { status } = req.body
+    if(!status){
+        throw new ApiError(400, "status is required")
+    }
+    if(!allowedStatus.includes(status)){
+        throw new ApiError(400, `status must be one of : ${allowedStatus.join(", ")}`)
+    }
+
+    // update payment
+    const updatePayment = await Payment.findByIdAndUpdate(
+        id,
+        {status},
+        {new : true}
+    )
+
+    // sync booking based on new payment status
+    const bookingUpdate = {}
+
+    if(status === "Completed"){
+        bookingUpdate.paymentStatus = "Paid"
+        bookingUpdate.bookingStatus = "Comfirmed"
+    } else if(status === "Failed"){
+        bookingUpdate.paymentStatus = "Failed"
+    } else if (status === "Refunded"){
+        bookingUpdate.paymentStatus = "Failed"
+        bookingUpdate.bookingStatus = "Failed"
+    }
+
+    if(Object.keys(bookingUpdate).length > 0){
+        await Booking.findByIdAndUpdate(payment.booking, bookingUpdate)
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            updatedPayment,
+            "Payment status updated successfully"
+        )
+    )
 })
 
 export {
     createpayment,
     getAllPayments,
     getMyPayments,
-    getPaymentById
+    getPaymentById,
+    updatePaymentStatus
 }
