@@ -19,5 +19,9 @@ app.use(cookieParser())
 import userRouter from "./routes/user.routes.js"
 import bookingRouter from "./routes/booking.routes.js"
 
+// google Oauth import
+import authRouter from "./routes/auth.routes.js"
+
 app.use("/api/v1/users", userRouter)
 app.use("/api/v1/bookings", bookingRouter)
+app.use("/api/v1/auth", authRouter)
